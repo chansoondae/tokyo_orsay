@@ -373,10 +373,14 @@ main { max-width: var(--maxw); margin: 0 auto; padding: 0 var(--gutter); }
 }
 .listen.on { background: var(--ink); color: var(--pink); }
 .docent-ctrl { display: flex; gap: 6px; align-items: center; }
-.rate {
-  min-width: 44px; padding: 6px 8px; border-radius: 999px; font-size: 12px; font-weight: 700;
-  color: var(--ink-2); box-shadow: inset 0 0 0 1px var(--line);
+.rates {
+  display: flex; padding: 2px; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--line);
 }
+.rate {
+  min-width: 32px; padding: 4px 6px; border-radius: 999px; font-size: 11.5px; font-weight: 700;
+  color: var(--ink-3); font-variant-numeric: tabular-nums;
+}
+.rate.on { background: var(--ink); color: var(--cream); }
 .docent p, .look li { transition: background-color 0.25s; border-radius: 4px; }
 .docent p.speaking, .look li.speaking { background: var(--pink-soft); box-shadow: -6px 0 0 var(--pink-soft), 6px 0 0 var(--pink-soft); }
 .docent p { margin: 0 0 10px; font-family: var(--font-serif); font-size: 15px; line-height: 1.85; word-break: keep-all; }

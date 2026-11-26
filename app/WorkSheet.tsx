@@ -217,7 +217,17 @@ function sentences(t: string) {
   return t.split(/(?<=[.?!])\s+/).filter(Boolean);
 }
 
-const RATES = [1, 1.2, 0.85];
+const RATES = [0.8, 1, 1.2, 1.4];
+const RATE_KEY = "docent-rate";
+
+function loadRate() {
+  try {
+    const v = Number(localStorage.getItem(RATE_KEY));
+    return RATES.includes(v) ? v : 1;
+  } catch {
+    return 1;
+  }
+}
 
 function pickKoreanVoice(voices: SpeechSynthesisVoice[]) {
   const ko = voices.filter((v) => v.lang.toLowerCase().startsWith("ko"));
@@ -232,11 +242,13 @@ function DocentBlock({ w }: { w: Work }) {
   const [rate, setRate] = useState(1);
   const voiceRef = useRef<SpeechSynthesisVoice | undefined>(undefined);
   const runRef = useRef(0); // 재생 세션 번호 — 정지·새 재생 시 이전 대기열 무효화
+  const idxRef = useRef(0); // 지금 읽고 있는 문장 번호 — 속도 변경 시 이어 읽기
 
   useEffect(() => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
     const synth = window.speechSynthesis;
     setCanSpeak(true);
+    setRate(loadRate());
     const load = () => (voiceRef.current = pickKoreanVoice(synth.getVoices()));
     load();
     synth.addEventListener?.("voiceschanged", load);
@@ -263,7 +275,7 @@ function DocentBlock({ w }: { w: Work }) {
     setActive(null);
   };
 
-  const play = (r = rate) => {
+  const play = (r = rate, from = 0) => {
     const synth = window.speechSynthesis;
     const run = ++runRef.current;
     synth.cancel();
@@ -273,6 +285,7 @@ function DocentBlock({ w }: { w: Work }) {
     const speakAt = (i: number) => {
       if (run !== runRef.current) return;
       if (i >= segs.length) return setActive(null);
+      idxRef.current = i;
       const u = new SpeechSynthesisUtterance(segs[i].text);
       u.lang = "ko-KR";
       u.rate = r;
@@ -285,15 +298,19 @@ function DocentBlock({ w }: { w: Work }) {
       };
       synth.speak(u);
     };
-    setActive(segs[0].key);
-    speakAt(0);
+    const start = Math.min(from, segs.length - 1);
+    setActive(segs[start].key);
+    speakAt(start);
   };
 
   const speaking = active !== null;
-  const cycleRate = () => {
-    const next = RATES[(RATES.indexOf(rate) + 1) % RATES.length];
+  const chooseRate = (next: number) => {
+    if (next === rate) return;
     setRate(next);
-    if (speaking) play(next); // 재생 중이면 처음부터 새 속도로
+    try {
+      localStorage.setItem(RATE_KEY, String(next));
+    } catch {}
+    if (speaking) play(next, idxRef.current); // 재생 중이면 지금 문장부터 새 속도로
   };
 
   return (
@@ -302,9 +319,20 @@ function DocentBlock({ w }: { w: Work }) {
         <h3>도슨트</h3>
         {canSpeak && (
           <div className="docent-ctrl">
-            <button className="rate" onClick={cycleRate} aria-label={`읽기 속도 ${rate}배`}>
-              {rate}×
-            </button>
+            <div className="rates" role="radiogroup" aria-label="읽기 속도">
+              {RATES.map((r) => (
+                <button
+                  key={r}
+                  role="radio"
+                  aria-checked={rate === r}
+                  className={`rate ${rate === r ? "on" : ""}`}
+                  onClick={() => chooseRate(r)}
+                  aria-label={`${r}배속`}
+                >
+                  {r.toFixed(1)}
+                </button>
+              ))}
+            </div>
             <button className={`listen ${speaking ? "on" : ""}`} onClick={() => (speaking ? stop() : play())} aria-pressed={speaking}>
               {speaking ? "■ 정지" : "▶ 듣기"}
             </button>
